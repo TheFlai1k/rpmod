@@ -5,13 +5,13 @@ import com.google.gson.GsonBuilder;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
+import com.mojang.blaze3d.platform.InputConstants;
 import net.fabricmc.api.ClientModInitializer;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 import net.fabricmc.fabric.api.client.keybinding.v1.KeyBindingHelper;
 import net.fabricmc.loader.api.FabricLoader;
-import net.minecraft.client.MinecraftClient;
-import net.minecraft.client.option.KeyBinding;
-import net.minecraft.client.util.InputUtil;
+import net.minecraft.client.KeyMapping;
+import net.minecraft.client.Minecraft;
 import org.lwjgl.glfw.GLFW;
 
 import java.net.URI;
@@ -40,17 +40,17 @@ public class RpModClient implements ClientModInitializer {
 
     private static final Gson GSON = new GsonBuilder().setPrettyPrinting().disableHtmlEscaping().create();
     private static final HttpClient HTTP = HttpClient.newHttpClient();
-    private static KeyBinding openKey;
+    private static KeyMapping openKey;
 
     @Override
     public void onInitializeClient() {
         loadConfig();
         openKey = KeyBindingHelper.registerKeyBinding(
-                new KeyBinding("key.rpmod.open", InputUtil.Type.KEYSYM, GLFW.GLFW_KEY_R, "category.rpmod"));
+                new KeyMapping("key.rpmod.open", InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_R, "category.rpmod"));
 
         ClientTickEvents.END_CLIENT_TICK.register(client -> {
-            while (openKey.wasPressed()) {
-                if (client.currentScreen == null && client.player != null) {
+            while (openKey.consumeClick()) {
+                if (client.screen == null && client.player != null) {
                     loadConfig(); // перечитываем файл, чтобы правки работали без перезапуска игры
                     client.setScreen(new RpScreen());
                 }
@@ -127,13 +127,13 @@ public class RpModClient implements ClientModInitializer {
                 });
     }
 
-    public static void sendToChat(MinecraftClient mc, String text) {
+    public static void sendToChat(Minecraft mc, String text) {
         if (mc.player == null) return;
         text = text.trim();
         switch (config.actionFormat) {
-            case "me" -> mc.player.networkHandler.sendChatCommand("me " + cut(text, 240));
-            case "asterisks" -> mc.player.networkHandler.sendChatMessage("*" + cut(text, 250) + "*");
-            default -> mc.player.networkHandler.sendChatMessage(cut(text, 256));
+            case "me" -> mc.player.connection.sendCommand("me " + cut(text, 240));
+            case "asterisks" -> mc.player.connection.sendChat("*" + cut(text, 250) + "*");
+            default -> mc.player.connection.sendChat(cut(text, 256));
         }
     }
 

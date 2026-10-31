@@ -1,49 +1,49 @@
 package com.rpmod;
 
-import net.minecraft.client.MinecraftClient;
-import net.minecraft.client.gui.DrawContext;
-import net.minecraft.client.gui.screen.Screen;
-import net.minecraft.client.gui.widget.ButtonWidget;
-import net.minecraft.client.gui.widget.TextFieldWidget;
-import net.minecraft.text.OrderedText;
-import net.minecraft.text.StringVisitable;
-import net.minecraft.text.Text;
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.components.Button;
+import net.minecraft.client.gui.components.EditBox;
+import net.minecraft.client.gui.screens.Screen;
+import net.minecraft.network.chat.Component;
+import net.minecraft.network.chat.FormattedText;
+import net.minecraft.util.FormattedCharSequence;
 import org.lwjgl.glfw.GLFW;
 
 public class RpScreen extends Screen {
 
-    private TextFieldWidget input;
+    private EditBox input;
     private String result = "";
     private String status = "";
     private boolean busy = false;
 
     public RpScreen() {
-        super(Text.literal("РП-помощник"));
+        super(Component.literal("РП-помощник"));
     }
 
     @Override
     protected void init() {
         int cx = this.width / 2;
 
-        input = new TextFieldWidget(this.textRenderer, cx - 150, 40, 300, 20, Text.literal("Подсказка"));
+        input = new EditBox(this.font, cx - 150, 40, 300, 20, Component.literal("Подсказка"));
         input.setMaxLength(200);
-        input.setPlaceholder(Text.literal("Что делает персонаж? Например: следит за торговцем"));
-        this.addDrawableChild(input);
+        input.setHint(Component.literal("Что делает персонаж? Например: следит за торговцем"));
+        this.addRenderableWidget(input);
         this.setInitialFocus(input);
 
-        this.addDrawableChild(ButtonWidget.builder(Text.literal("Сгенерировать"), b -> generate())
-                .dimensions(cx - 150, 70, 145, 20).build());
-        this.addDrawableChild(ButtonWidget.builder(Text.literal("Отправить в чат"), b -> send())
-                .dimensions(cx + 5, 70, 145, 20).build());
+        this.addRenderableWidget(Button.builder(Component.literal("Сгенерировать"), b -> generate())
+                .bounds(cx - 150, 70, 145, 20).build());
+        this.addRenderableWidget(Button.builder(Component.literal("Отправить в чат"), b -> send())
+                .bounds(cx + 5, 70, 145, 20).build());
     }
 
     private void generate() {
-        String hint = input.getText().trim();
+        String hint = input.getValue().trim();
         if (hint.isEmpty() || busy) return;
         busy = true;
         status = "Думаю...";
         RpModClient.generate(hint).whenComplete((text, error) ->
-                MinecraftClient.getInstance().execute(() -> {
+                Minecraft.getInstance().execute(() -> {
                     busy = false;
                     if (error != null) {
                         Throwable cause = error.getCause() != null ? error.getCause() : error;
@@ -58,8 +58,8 @@ public class RpScreen extends Screen {
 
     private void send() {
         if (result.isEmpty()) return;
-        RpModClient.sendToChat(MinecraftClient.getInstance(), result);
-        this.close();
+        RpModClient.sendToChat(Minecraft.getInstance(), result);
+        this.onClose();
     }
 
     @Override
@@ -72,20 +72,20 @@ public class RpScreen extends Screen {
     }
 
     @Override
-    public void render(DrawContext context, int mouseX, int mouseY, float delta) {
-        super.render(context, mouseX, mouseY, delta);
+    public void render(GuiGraphics graphics, int mouseX, int mouseY, float delta) {
+        super.render(graphics, mouseX, mouseY, delta);
         int cx = this.width / 2;
-        context.drawCenteredTextWithShadow(this.textRenderer, this.title, cx, 15, 0xFFFFFFFF);
+        graphics.drawCenteredString(this.font, this.title, cx, 15, 0xFFFFFFFF);
 
         int y = 105;
         if (!status.isEmpty()) {
-            for (OrderedText line : this.textRenderer.wrapLines(StringVisitable.plain(status), 300)) {
-                context.drawTextWithShadow(this.textRenderer, line, cx - 150, y, 0xFFFFAA00);
+            for (FormattedCharSequence line : this.font.split(FormattedText.of(status), 300)) {
+                graphics.drawString(this.font, line, cx - 150, y, 0xFFFFAA00);
                 y += 10;
             }
         }
-        for (OrderedText line : this.textRenderer.wrapLines(StringVisitable.plain(result), 300)) {
-            context.drawTextWithShadow(this.textRenderer, line, cx - 150, y, 0xFFFFFFFF);
+        for (FormattedCharSequence line : this.font.split(FormattedText.of(result), 300)) {
+            graphics.drawString(this.font, line, cx - 150, y, 0xFFFFFFFF);
             y += 10;
         }
     }
